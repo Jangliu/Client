@@ -1,6 +1,7 @@
 ﻿  Client.cpp
-c:\users\jangliu\desktop\client\client\client.cpp(68): warning C4477: 'printf_s' : format string '%d' requires an argument of type 'int', but variadic argument 1 has type 'int *'
-c:\users\jangliu\desktop\client\client\client.cpp(115): warning C4018: '<': signed/unsigned mismatch
-c:\users\jangliu\desktop\client\client\client.cpp(36): warning C4101: 'checksize': unreferenced local variable
-c:\users\jangliu\desktop\client\client\client.cpp(36): warning C4101: 'checklen': unreferenced local variable
+c:\users\jangliu\desktop\client\client\client.cpp(80): warning C4477: 'printf_s' : format string '%d' requires an argument of type 'int', but variadic argument 1 has type 'int *'
+c:\users\jangliu\desktop\client\client\client.cpp(135): warning C4018: '<': signed/unsigned mismatch
+c:\users\jangliu\desktop\client\client\client.cpp(48): warning C4101: 'checksize': unreferenced local variable
+c:\users\jangliu\desktop\client\client\client.cpp(48): warning C4101: 'checklen': unreferenced local variable
+c:\users\jangliu\desktop\client\client\client.cpp(38): warning C4172: returning address of local variable or temporary: decrypt
   Client.vcxproj -> C:\Users\Jangliu\Desktop\Client\Debug\Client.exe

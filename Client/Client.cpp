@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <winsock.h>
 #include <string.h>
+#include "md5_2.h"
 #pragma comment (lib,"wsock32.lib")
 
 #define MAX 2048
@@ -25,6 +26,17 @@ struct frame
 	int x;
 	char message[200];
 };
+
+unsigned char* MD5(unsigned char encrypt[],unsigned char *de)
+{
+	unsigned char decrypt[16];
+	de = decrypt;
+	MD5_CTX md5;
+	MD5Init(&md5);
+	MD5Update(&md5, encrypt, strlen((char *)encrypt));
+	MD5Final(&md5, decrypt);
+	return de;
+}
 int main(int argc, char*argv[])
 {
 	SOCKET s;
@@ -70,7 +82,7 @@ int main(int argc, char*argv[])
 		}
 	} while (retral != 0);
 
-	checksize = recv(s, (char*)c,sizeof(CheckNum), 0);
+	/*checksize = recv(s, (char*)c,sizeof(CheckNum), 0);
 	
 	do 
 	{
@@ -98,7 +110,7 @@ int main(int argc, char*argv[])
 			printf("Login the server failed, please enter the key again.\n");
 			memset(&Frame, 0, sizeof(frame));
 		}
-	} while (!(Frame.type == 2 && Frame.judge == TRUE));
+	} while (!(Frame.type == 2 && Frame.judge == TRUE));*/
 
 	int next_statu;
 	next_statu = STATU_INIT;
@@ -137,7 +149,7 @@ int main(int argc, char*argv[])
 				printf("Please enter the file you want upload:\n");
 				scanf_s("%s", &filename, 19);
 				err = fopen_s(&Fid, filename, "ab+");
-				if (err == 0)
+				if (err != 0)
 				{
 					printf("File open failed, please try again.\n");
 					break;
@@ -168,8 +180,16 @@ int main(int argc, char*argv[])
 			if (len <= MAX)
 			{
 				fread_s(send_buf, MAX, 1, len, Fid);
+				unsigned char md5[16];
+				unsigned char *m = md5;
+				MD5((unsigned char*)send_buf,m);
 				send(s, se, strlen(send_buf), 0);
 				memset(send_buf, 0, MAX);
+				recv(s, re, MAX, 0);
+				if (!strcmp((char*)md5, recv_buf))
+				{
+					printf("Successfully.\n");
+				}
 			}
 			else
 			{
