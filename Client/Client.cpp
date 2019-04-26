@@ -5,7 +5,7 @@
 #include <string.h>
 #pragma comment (lib,"wsock32.lib")
 
-#define MAX 20000
+#define MAX 2048
 #define STATU_INIT 0
 #define STATU_CHECK 1
 #define STATU_UPLOAD 2
@@ -43,6 +43,9 @@ int main(int argc, char*argv[])
 	struct checknum*c = CheckNum;
 	struct frame*f = &Frame;
 	struct frame*fs = Frames;
+	FILE *Fid;
+	errno_t err;
+	int len;
 
 	local.sin_family = AF_INET;
 	local.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
@@ -67,10 +70,15 @@ int main(int argc, char*argv[])
 		}
 	} while (retral != 0);
 
-	/*checksize = recv(s, (char*)c,sizeof(CheckNum), 0);
+	checksize = recv(s, (char*)c,sizeof(CheckNum), 0);
 	
 	do 
 	{
+		char Username[9];
+		printf("Please enter your Username:\n ");
+		scanf_s("%s", &Username, 8);
+		printf("Please enter your password:\n");
+		scanf_s("%d", &key, sizeof(int));
 		int XorResult;
 		for (int i = 0; i < checksize / sizeof(checknum); i++)
 			checksum += CheckNum[i].a;
@@ -82,15 +90,15 @@ int main(int argc, char*argv[])
 		recv(s, (char*)f, sizeof(frame), 0);
 		if (Frame.type == 2 && Frame.judge == TRUE)
 		{
-			printf("Login The Server Successfully.\n");
+			printf("Login the server successfully.\n");
 			memset(&Frame, 0, sizeof(frame));
 		}
 		else
 		{
-			printf("Login The Server Failed, Please Enter The Key Again.\n");
+			printf("Login the server failed, please enter the key again.\n");
 			memset(&Frame, 0, sizeof(frame));
 		}
-	} while (!(Frame.type == 2 && Frame.judge == TRUE));*/
+	} while (!(Frame.type == 2 && Frame.judge == TRUE));
 
 	int next_statu;
 	next_statu = STATU_INIT;
@@ -100,43 +108,45 @@ int main(int argc, char*argv[])
 		switch (next_statu)
 		{
 		case STATU_INIT:
-			printf_s("Please Choice the service you want:\n");
-			scanf_s("%d",&next_statu);
-			break;
+		{
+			printf_s("Please choice the service you want:\n");
+			scanf_s("%d", &next_statu);
+			break; 
+		}
 		case STATU_CHECK:
+		{
 			Frame.type = 12;
 			send(s, (char*)f, sizeof(frame), 0);
 			memset(&Frame, 0, sizeof(frame));
-			retral=recv(s, (char*)fs, sizeof(Frames), 0);
-			printf("The Files On The Server:\n");
-			for (int i = 0; i < retral/sizeof(frame); i++)
+			retral = recv(s, (char*)fs, sizeof(Frames), 0);
+			printf("The files on the server:\n");
+			for (int i = 0; i < retral / sizeof(frame); i++)
 			{
 				printf("%s", &Frames[i].message);
 				printf("\n");
 			}
-			memset(Frames, 0,sizeof(Frames));
+			memset(Frames, 0, sizeof(Frames));
 			break;
+		}
 		case STATU_UPLOAD:
-			FILE *Fid;
-			errno_t err;
-			int len;
-			fseek(Fid, 0, SEEK_END);
-			len = ftell(Fid);
-			fseek(Fid, 0, SEEK_SET);
+		{
 			while (1)
 			{
 				Frame.type = 15;
 				char filename[20];
-				printf("Please Enter The File You Want Upload:\n");
-				scanf_s("%s", &filename,19);
+				printf("Please enter the file you want upload:\n");
+				scanf_s("%s", &filename, 19);
 				err = fopen_s(&Fid, filename, "ab+");
 				if (err == 0)
 				{
-					printf("File Open Failed, Please Try Again.\n");
+					printf("File open failed, please try again.\n");
 					break;
 				}
 				else
 				{
+					fseek(Fid, 0, SEEK_END);
+					len = ftell(Fid);
+					fseek(Fid, 0, SEEK_SET);
 					strcpy_s(Frame.message, sizeof(Frame.message), filename);
 					Frame.x = len;
 					send(s, (char*)f, sizeof(frame), 0);
@@ -153,7 +163,7 @@ int main(int argc, char*argv[])
 						printf("Invaild Filename.\n");
 					}
 				}
-				
+
 			}
 			if (len <= MAX)
 			{
@@ -178,83 +188,69 @@ int main(int argc, char*argv[])
 			fclose(Fid);
 			next_statu = STATU_INIT;
 			break;
+		}
 		case STATU_DOWNLOAD:
-			FILE*Fid;
-			errno_t err;
-			int len = 0;
+		{
 			while (1)
+		{
+			char filename[20];
+			printf("Please enter the filename you want download:\n");
+			scanf_s("%s", &filename, 19);
+			Frame.type = 13;
+			strcpy_s(Frame.message, sizeof(Frame.message), filename);
+			send(s, (char*)f, sizeof(frame), 0);
+			memset(&Frame, 0, sizeof(frame));
+			recv(s, (char*)f, sizeof(frame), 0);
+			if (Frame.type == 4 && Frame.judge == TRUE)
 			{
-				char filename[20];
-				printf("Please Enter The Filename You Want Download:\n");
-				scanf_s("%s", &filename, 19);
-				Frame.type = 13;
-				strcpy_s(Frame.message, sizeof(Frame.message), filename);
-				send(s, (char*)f, sizeof(frame), 0);
-				memset(&Frame, 0, sizeof(frame));
-				recv(s, (char*)f, sizeof(frame), 0);
-				if (Frame.type == 4 && Frame.judge == TRUE)
+				err = fopen_s(&Fid, filename, "ab+");
+				len = Frame.x;
+				if (len <= MAX)
 				{
-
-				}
-
-			}
-			scanf("%s", &send_buf);
-			err = fopen_s(&Fid, send_buf, "wb+");
-			send(s, re, strlen(send_buf), 0);
-			memset(send_buf, 0, MAX);
-			recv(s, recv_buf, MAX, 0);
-			if (recv_buf[0] == 'N')
-			{
-				printf("Wrong Filename, Please Enter Again\n");
-				memset(recv_buf, 0, MAX);
-			}
-			else if (recv_buf[0] == 'Y')
-			{
-				memset(recv_buf, 0, MAX);
-				break;
-			}
-			recv(s, (char*)p,MAX, 0);
-			if (CheckNum[0].a != NULL)
-				len = CheckNum[0].a;
-			else
-				len = CheckNum[0].b;
-			if (len < MAX)
-			{
-				recv(s, re, MAX, 0);
-				fwrite(recv_buf, 1, len, Fid);
-				memset(recv_buf, 0, MAX);
-			}
-			else
-			{
-				int epoch = len / MAX;
-				int lastepoch = len % MAX;
-				for (int i = 1; i <= epoch; i++)
-				{
-					recv(s, re, MAX, 0);
-					fwrite(recv_buf, 1, MAX, Fid);
+					recv(s, re, len, 0);
+					fwrite(recv_buf, 1, len, Fid);
 					memset(recv_buf, 0, MAX);
+					fclose(Fid);
+					next_statu = STATU_INIT;
+					break;
 				}
-				recv(s, re, lastepoch, 0);
-				fwrite(recv_buf, 1, lastepoch, Fid);
-				memset(recv_buf, 0, MAX);
+				else
+				{
+					int epoch = len / MAX;
+					int lastpeoch = len % MAX;
+					for (int i = 0; i < epoch; i++)
+					{
+						recv(s, re, MAX, 0);
+						fwrite(recv_buf, 1, MAX, Fid);
+						memset(recv_buf, 0, MAX);
+					}
+					recv(s, re, lastpeoch, 0);
+					fwrite(recv_buf, 1, lastpeoch, Fid);
+					memset(recv_buf, 0, MAX);
+					fclose(Fid);
+					next_statu = STATU_INIT;
+					break;
+				}
 			}
-			fclose(Fid);
-			
-		/*case STATU_CHANGEKEY:
-			send_buf[0] = 'C';
-			send(s, se, strlen(send_buf), 0);
-			memset(send_buf, 0, MAX);
-			printf("Please enter the new key you want:\n");
-			scanf("%s", &send_buf);
-			send(s, se, strlen(send_buf), 0);
-			memset(send_buf, 0, MAX);
+		}
+		}
+		case STATU_CHANGEKEY:
+		{
+			int newkey;
+			printf("Please enter the new password.\n");
+			scanf_s("%d", &newkey);
+			Frame.type = 17;
+			Frame.x = newkey;
+			send(s, (char*)f, sizeof(frame), 0);
+			memset(&Frame, 0, sizeof(frame));
+			next_statu = STATU_INIT;
 			break;
-
+		}
 		case STATU_EXIT:
 			flag = FALSE;
 			break;
 		default:
-			break;*/
+			break;
 		}
 	}
 }
