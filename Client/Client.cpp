@@ -27,13 +27,13 @@ struct frame
 	char message[200];
 };
 
-unsigned char* MD5(unsigned char encrypt[],unsigned char *de)
+unsigned char* MD5(char encrypt[],unsigned char *de)
 {
 	unsigned char decrypt[16];
 	de = decrypt;
 	MD5_CTX md5;
 	MD5Init(&md5);
-	MD5Update(&md5, encrypt, strlen((char *)encrypt));
+	MD5Update(&md5,(unsigned char*)encrypt, strlen((char *)encrypt));
 	MD5Final(&md5, decrypt);
 	return de;
 }
@@ -44,7 +44,6 @@ int main(int argc, char*argv[])
 	sockaddr_in local, remote;
 	struct checknum CheckNum[MAX];
 	struct frame Frame;
-	struct frame Frames[10];
 	int retral,r,checksize,checklen;
 	int checksum=0;
 	int key = 12345;
@@ -54,7 +53,6 @@ int main(int argc, char*argv[])
 	char *re = recv_buf;
 	struct checknum*c = CheckNum;
 	struct frame*f = &Frame;
-	struct frame*fs = Frames;
 	FILE *Fid;
 	errno_t err;
 	int len;
@@ -64,8 +62,8 @@ int main(int argc, char*argv[])
 	local.sin_port = htons(0x3412);
 
 	remote.sin_family = AF_INET;
-	remote.sin_addr.S_un.S_addr = htonl(INADDR_LOOPBACK);
-	remote.sin_port = htons(0x7856);
+	remote.sin_addr.S_un.S_addr = inet_addr("192.168.1.106");
+	remote.sin_port = htons(0x1234);
 
 	WSAStartup(0x101, &wsa);
 	s = socket(AF_INET, SOCK_STREAM, 0);
@@ -81,14 +79,16 @@ int main(int argc, char*argv[])
 			closesocket(s);
 		}
 	} while (retral != 0);
-
-	/*checksize = recv(s, (char*)c,sizeof(CheckNum), 0);
+	
+	recv(s, re, MAX, 0);
+	memset(recv_buf, 0, MAX);
+	checksize = recv(s, (char*)c,sizeof(CheckNum), 0);
 	
 	do 
 	{
-		char Username[9];
+		char Username[8];
 		printf("Please enter your Username:\n ");
-		scanf_s("%s", &Username, 8);
+		scanf_s("%s", &Username, 7);
 		printf("Please enter your password:\n");
 		scanf_s("%d", &key, sizeof(int));
 		int XorResult;
@@ -97,6 +97,7 @@ int main(int argc, char*argv[])
 		XorResult = checksum ^ key;
 		Frame.type = 11;
 		Frame.x = XorResult;
+		memcpy(Frame.message, Username, strlen(Username));
 		send(s, (char*)f, sizeof(frame), 0);
 		memset(&Frame, 0, sizeof(frame));
 		recv(s, (char*)f, sizeof(frame), 0);
@@ -104,13 +105,14 @@ int main(int argc, char*argv[])
 		{
 			printf("Login the server successfully.\n");
 			memset(&Frame, 0, sizeof(frame));
+			break;
 		}
 		else
 		{
 			printf("Login the server failed, please enter the key again.\n");
 			memset(&Frame, 0, sizeof(frame));
 		}
-	} while (!(Frame.type == 2 && Frame.judge == TRUE));*/
+	} while (1);
 
 	int next_statu;
 	next_statu = STATU_INIT;
@@ -130,14 +132,24 @@ int main(int argc, char*argv[])
 			Frame.type = 12;
 			send(s, (char*)f, sizeof(frame), 0);
 			memset(&Frame, 0, sizeof(frame));
-			retral = recv(s, (char*)fs, sizeof(Frames), 0);
+			retral = recv(s, re, MAX, 0);
 			printf("The files on the server:\n");
-			for (int i = 0; i < retral / sizeof(frame); i++)
+			int i = 0;
+			while (i<retral)
 			{
-				printf("%s", &Frames[i].message);
-				printf("\n");
+				if (recv_buf[i] != ' ')
+				{
+					printf("%c", recv_buf[i]);
+					i++;
+				}
+				else
+				{
+					printf("\n");
+					i++;
+				}
 			}
-			memset(Frames, 0, sizeof(Frames));
+			printf("\n");
+			next_statu = STATU_INIT;
 			break;
 		}
 		case STATU_UPLOAD:
@@ -182,7 +194,7 @@ int main(int argc, char*argv[])
 				fread_s(send_buf, MAX, 1, len, Fid);
 				unsigned char md5[16];
 				unsigned char *m = md5;
-				MD5((unsigned char*)send_buf,m);
+				MD5(send_buf,m);
 				send(s, se, strlen(send_buf), 0);
 				memset(send_buf, 0, MAX);
 				recv(s, re, MAX, 0);
@@ -193,8 +205,8 @@ int main(int argc, char*argv[])
 			}
 			else
 			{
-				int epoch = len / 20000;
-				int lastepoch = len % 20000;
+				int epoch = len / 2048;
+				int lastepoch = len % 2048;
 				for (int i = 1; i <= epoch; i++)
 				{
 					fread_s(send_buf, MAX, 1, MAX, Fid);
@@ -212,47 +224,55 @@ int main(int argc, char*argv[])
 		case STATU_DOWNLOAD:
 		{
 			while (1)
-		{
-			char filename[20];
-			printf("Please enter the filename you want download:\n");
-			scanf_s("%s", &filename, 19);
-			Frame.type = 13;
-			strcpy_s(Frame.message, sizeof(Frame.message), filename);
-			send(s, (char*)f, sizeof(frame), 0);
-			memset(&Frame, 0, sizeof(frame));
-			recv(s, (char*)f, sizeof(frame), 0);
-			if (Frame.type == 4 && Frame.judge == TRUE)
 			{
-				err = fopen_s(&Fid, filename, "ab+");
-				len = Frame.x;
-				if (len <= MAX)
+				char filename[20];
+				printf("Please enter the filename you want download:\n");
+				scanf_s("%s", &filename, 19);
+				Frame.type = 13;
+				strcpy_s(Frame.message, sizeof(Frame.message), filename);
+				send(s, (char*)f, sizeof(frame), 0);
+				memset(&Frame, 0, sizeof(frame));
+				recv(s, (char*)f, sizeof(frame), 0);
+				if (Frame.type == 4 && Frame.judge == TRUE)
 				{
-					recv(s, re, len, 0);
-					fwrite(recv_buf, 1, len, Fid);
-					memset(recv_buf, 0, MAX);
-					fclose(Fid);
-					next_statu = STATU_INIT;
-					break;
+					err = fopen_s(&Fid, filename, "ab+");
+					len = Frame.x;
+					if (len <= MAX)
+					{
+						recv(s, re, len, 0);
+						fwrite(recv_buf, 1, len, Fid);
+						memset(recv_buf, 0, MAX);
+						fclose(Fid);
+						next_statu = STATU_INIT;
+						break;
+					}
+					else
+					{
+						int epoch = len / MAX;
+						printf("epoch:%d\n", epoch);
+						int lastpeoch = len % MAX;
+						printf("lastepoch:%d\n", lastpeoch);
+						for (int i = 0; i < epoch; i++)
+						{
+							recv(s, re, MAX, 0);
+							fwrite(recv_buf, 1, MAX, Fid);
+							memset(recv_buf, 0, MAX);
+						}
+						recv(s, re, lastpeoch, 0);
+						fwrite(recv_buf, 1, lastpeoch, Fid);
+						memset(recv_buf, 0, MAX);
+						fclose(Fid);
+						next_statu = STATU_INIT;
+						break;
+					}
 				}
 				else
 				{
-					int epoch = len / MAX;
-					int lastpeoch = len % MAX;
-					for (int i = 0; i < epoch; i++)
-					{
-						recv(s, re, MAX, 0);
-						fwrite(recv_buf, 1, MAX, Fid);
-						memset(recv_buf, 0, MAX);
-					}
-					recv(s, re, lastpeoch, 0);
-					fwrite(recv_buf, 1, lastpeoch, Fid);
-					memset(recv_buf, 0, MAX);
-					fclose(Fid);
-					next_statu = STATU_INIT;
-					break;
+					printf("Error.\n");
+					memset(&Frame, 0, sizeof(frame));
 				}
 			}
-		}
+			break;
 		}
 		case STATU_CHANGEKEY:
 		{
