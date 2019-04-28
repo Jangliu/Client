@@ -287,7 +287,17 @@ int main(int argc, char*argv[])
 			break;
 		}
 		case STATU_EXIT:
-			flag = FALSE;
+			Frame.type = 18;
+			send(s, (char*)f, sizeof(frame), 0);
+			shutdown(s, 1);
+			memset(&Frame, 0, sizeof(frame));
+			recv(s, (char*)f, sizeof(frame), 0);
+			if (Frame.type == 8 && Frame.judge == TRUE)
+			{
+				flag = FALSE;
+				shutdown(s, 0);
+				memset(&Frame, 0, sizeof(frame));
+			}
 			break;
 		default:
 			break;
